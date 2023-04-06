@@ -7,12 +7,7 @@
 
 {% block content %}
 
-{% if state == 1 %}
-Sucessfully registered!
-{% elif state == 2 %}
-User already exists
-{%endif%}
-
+{{message}}
 
   <form method="post">
     <label for="username">Username</label>
