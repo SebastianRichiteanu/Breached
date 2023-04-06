@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify
+from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response
 from pymongo import MongoClient
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
@@ -9,7 +9,7 @@ import secrets
 
 app = Flask(__name__)
 
-client = MongoClient('localhost', 27017, username='pompompurin', password='pompompurin')
+client = MongoClient('localhost', 27017)
 db = client.flask_db
 
 users_collection = db.users
@@ -19,16 +19,26 @@ jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 
+user_schema = {
+    'username': str,
+    'password': str
+}
 
+post_schema = {
+    'title': str,
+    'content': str,
+    'user': str
+}
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == 'POST':
-        new_user = request.get_json()
+        username = request.form["username"]
+        password = request.form["password"]
         # maybe encrypt password
-        doc = users_collection.find_one({"username":new_user["username"]})
-        if not doc:
-            users_collection.insert_one(new_user)
+        user = users_collection.find_one({"username":username})
+        if not user:
+            users_collection.insert_one({'username': username, 'password': password})
             return render_template('auth/register.html', state=1)
         else:
             return render_template('auth/register.html', state=2)
@@ -39,35 +49,42 @@ def register():
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == 'POST':
-        login_details = request.get_json()
-        user_from_db = users_collection.find_one({"username":login_details["username"]})
-        if user_from_db:
-            if login_details["password"] == user_from_db["password"]:
-                access_token = create_access_token(identity=user_from_db["username"])  # creca aici nosql
-                return jsonify(access_token=access_token), 200
-        return jsonify({'msg':'Username or password incorrect!'}), 401
+        username = request.form["username"]
+        password = request.form["password"]
+        user_from_db = users_collection.find_one({"username":username})
+        if user_from_db and password == user_from_db["password"]:
+            access_token = create_access_token(identity=username)
+            response = make_response(render_template('auth/login.html', message='Login successful!'))
+            response.set_cookie('access_token', access_token)
+            return response
+        else:
+            return render_template('auth/login.html', state=2)
     else:
-        return render_template('auth/login.html')
+        return render_template('auth/login.html', state=0)
 
 
 
-@app.route("/post/create", methods=["POST"])
+@app.route("/post/create", methods=["GET", "POST"])
 @jwt_required()
 def create_post():
-    current_user = get_jwt_identity() 
-    user_from_db = users_collection.find_one({'username' : current_user})
-    
-    if user_from_db:
-        post_details = request.get_json() 
-        user_post = {'profile' : user_from_db["username"],  "post": post_details["post"]}
-        post = posts_collection.find_one(user_post) 
+    if request.method == 'POST':
+        current_user = get_jwt_identity() 
+        user_from_db = users_collection.find_one({'username' : current_user})
         
-        if not post:
-            posts_collection.insert_one(user_post)
-            return jsonify({'msg': 'Post created successfully'}), 200
-        else: 
-            return jsonify({'msg': 'Post already exists on your profile'}), 404
-    return jsonify({'msg': 'Access Token Expired'}), 404
+        if user_from_db:
+            title = request.form["title"]
+            content = request.form["content"]
+
+            user_post = {'user' : user_from_db["username"],  "post": title, "content": content}
+            post = posts_collection.find_one(user_post) 
+            
+            if not post:
+                posts_collection.insert_one(user_post)
+                return render_template('post/create', state = 1)
+            else: 
+                return render_template('post/create', state = 2)
+    else:
+        return render_template('post/create', state = 0)
 
 @app.route("/post/get", methods=["GET"])
 @jwt_required()

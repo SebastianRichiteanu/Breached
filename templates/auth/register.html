@@ -5,6 +5,7 @@
 {% endblock %}
 
 
+{% block content %}
 
 {% if state == 1 %}
 Sucessfully registered!
@@ -12,8 +13,8 @@ Sucessfully registered!
 User already exists
 {%endif%}
 
-{% block content %}
-  <form method="post" action="/register.html">
+
+  <form method="post">
     <label for="username">Username</label>
     <input name="username" id="username" required>
     <label for="password">Password</label>

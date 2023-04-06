@@ -5,6 +5,14 @@
 {% endblock %}
 
 {% block content %}
+
+{% if state == 1 %}
+Logon successful
+{% elif state == 2 %}
+Username or password incorrect! 
+{%endif%}
+
+
   <form method="post">
     <label for="username">Username</label>
     <input name="username" id="username" required>
