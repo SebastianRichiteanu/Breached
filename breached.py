@@ -25,7 +25,7 @@ user_schema = {
     'username': str,
     'password': str
 }
-
+ 
 post_schema = {
     'title': str,
     'content': str,
