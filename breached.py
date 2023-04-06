@@ -18,6 +18,8 @@ posts_collection = db.posts
 jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
+app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+
 
 user_schema = {
     'username': str,
@@ -39,11 +41,11 @@ def register():
         user = users_collection.find_one({"username":username})
         if not user:
             users_collection.insert_one({'username': username, 'password': password})
-            return render_template('auth/register.html', state=1)
+            return render_template('auth/register.html', message='Sucessfully registered! You can now log in.')
         else:
-            return render_template('auth/register.html', state=2)
+            return render_template('auth/register.html', message='User already exists!')
     else:
-        return render_template('auth/register.html', state=0)
+        return render_template('auth/register.html')
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -55,12 +57,12 @@ def login():
         if user_from_db and password == user_from_db["password"]:
             access_token = create_access_token(identity=username)
             response = make_response(render_template('auth/login.html', message='Login successful!'))
-            response.set_cookie('access_token', access_token)
+            response.set_cookie('access_token_cookie', access_token)
             return response
         else:
-            return render_template('auth/login.html', state=2)
+            return render_template('auth/login.html', message='Username or password incorrect!')
     else:
-        return render_template('auth/login.html', state=0)
+        return render_template('auth/login.html')
 
 
 
@@ -80,11 +82,11 @@ def create_post():
             
             if not post:
                 posts_collection.insert_one(user_post)
-                return render_template('post/create', state = 1)
+                return render_template('post/create.html', state = 1)
             else: 
-                return render_template('post/create', state = 2)
+                return render_template('post/create.html', state = 2)
     else:
-        return render_template('post/create', state = 0)
+        return render_template('post/create.html', state = 0)
 
 @app.route("/post/get", methods=["GET"])
 @jwt_required()

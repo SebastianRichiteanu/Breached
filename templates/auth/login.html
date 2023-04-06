@@ -6,12 +6,7 @@
 
 {% block content %}
 
-{% if state == 1 %}
-Logon successful
-{% elif state == 2 %}
-Username or password incorrect! 
-{%endif%}
-
+{{message}}
 
   <form method="post">
     <label for="username">Username</label>
