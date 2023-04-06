@@ -6,6 +6,9 @@ import datetime
 import hashlib
 import urllib
 import secrets
+import os
+
+PHOTO_FOLDER = os.path.join('static', 'photos')
 
 app = Flask(__name__)
 
@@ -15,9 +18,12 @@ db = client.flask_db
 users_collection = db.users
 posts_collection = db.posts
 
-jwt = JWTManager(app)
+
 app.config['JWT_SECRET_KEY'] = secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
+jwt = JWTManager(app)
+
+app.config['PHOTO_FOLDER'] = PHOTO_FOLDER
 
 user_schema = {
     'username': str,
@@ -54,7 +60,7 @@ def login():
         user_from_db = users_collection.find_one({"username":username})
         if user_from_db and password == user_from_db["password"]:
             access_token = create_access_token(identity=username)
-            response = make_response(render_template('auth/login.html', message='Login successful!'))
+            response = make_response(render_template('auth/login.html', state=1))
             response.set_cookie('access_token', access_token)
             return response
         else:
@@ -134,6 +140,18 @@ def delete_template():
         else: return jsonify({'msg': 'Post not exists on your profile'}), 404
     else:
         return jsonify({'msg': 'Access Token Expired'}), 404
+    
+@app.route("/profile", methods = ["GET"])
+@jwt_required()
+def profile_page():
+    current_user = get_jwt_identity()
+        #display Hello user, profile photo, change photo button
+
+    full_filename = os.path.join(app.config['PHOTO_FOLDER'], 'shovon.jpg')
+    return render_template("profile.html", user_image = full_filename)
+
+    return jsonify(logged_in_as=current_user), 200
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -142,3 +160,5 @@ def index():
     username = ""
     return render_template('index.html', username=username)
 
+#main page with posts
+#profile page - profile pic
