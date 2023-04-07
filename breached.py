@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, flash
+from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, flash, send_from_directory, send_file
 from pymongo import MongoClient
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required, set_access_cookies, unset_jwt_cookies
@@ -27,6 +27,7 @@ app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config["JWT_COOKIE_SECURE"] = True
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 
 user_schema = {
@@ -35,6 +36,7 @@ user_schema = {
 }
  
 post_schema = {
+    'id': int,
     'title': str,
     'content': str,
     'user': str
@@ -64,10 +66,8 @@ def login():
         user_from_db = users_collection.find_one({"username":username})
         if user_from_db and password == user_from_db["password"]:
             access_token = create_access_token(identity=username)
-            # response = make_response(render_template('index.html', message='Login successful!'))
             response = redirect('/')
             set_access_cookies(response=response, encoded_access_token=access_token)
-            # response.set_cookie('access_token_cookie', access_token)
             return response
         else:
             return render_template('auth/login.html', message='Username or password incorrect!')
@@ -77,11 +77,29 @@ def login():
 @app.route('/logout', methods=["GET"])
 @jwt_required()
 def logout():
-    # response = make_response(render_template('index.html'))
     response = redirect('/')
     unset_jwt_cookies(response)
     return response
     
+
+@app.route("/posts", methods=["GET"])
+def posts():
+    posts = posts_collection.find()
+    return render_template('posts.html', posts=posts)
+
+@app.route("/post/<post_id>", methods=["GET"])
+@jwt_required(optional=True)
+def get_template(post_id):
+    post = posts_collection.find_one({"id":int(post_id)})
+    if post:
+        current_user = get_jwt_identity() 
+        owner = False
+        if post["user"] == current_user:
+            owner = True
+        return render_template('/post/get.html', post=post, owner=owner)
+
+    return jsonify({'msg': 'NU'}), 404
+
 
 @app.route("/post/create", methods=["GET", "POST"])
 @jwt_required()
@@ -89,73 +107,33 @@ def create_post():
     if request.method == 'POST':
         current_user = get_jwt_identity() 
 
-        #sebik bosule sterge user_from_db si foloseste current_user ca e fix acelasi lucru. pui current_user!=None ca sa verifici
-
-        user_from_db = users_collection.find_one({'username' : current_user})
-        
-        if user_from_db:
+        if current_user:
             title = request.form["title"]
+            if posts_collection.find_one({"title":title}) != None:
+                return render_template('post/create.html', message='Post already exists!')
+
             content = request.form["content"]
+            post_id = posts_collection.count_documents({})+1
+            app.logger.debug(post_id)
+            user_post = {"id": post_id, "user" : current_user,  "title": title, "content": content}
+            posts_collection.insert_one(user_post)
+            return render_template('post/create.html', message='Sucessfully created post!')
 
-            user_post = {'user' : user_from_db["username"],  "post": title, "content": content}
-            post = posts_collection.find_one(user_post) 
+    return render_template('post/create.html')
 
-            if not post:
-                posts_collection.insert_one(user_post)
-                return render_template('post/create.html', logged_in = 1)
-            else: 
-                return render_template('post/create.html', logged_in = 2)
-    else:
-        return render_template('post/create.html')
 
-@app.route("/post/get", methods=["GET"])
+@app.route("/post/delete/<post_id>", methods=["GET"])
 @jwt_required()
-def get_template():
-    current_user = get_jwt_identity() 
-    user_from_db = users_collection.find_one({'username' : current_user})
-    if user_from_db:
-        user_post = {'profile' : user_from_db["username"]}
-        return jsonify({"docs":list(db.templates.find(user_post, {"_id":0}))}), 200
-
-    return jsonify({'msg': 'Access Token Expired'}), 404
-
-
-@app.route("/post/update", methods=["POST"])
-@jwt_required()
-def update_template():
+def delete_template(post_id):
     current_user = get_jwt_identity()
-    user_from_db = users_collection.find_one({'username' : current_user})
     
-    if user_from_db:
-        post_details = request.get_json() 
-        user_template = {'profile' : user_from_db["username"],  "post": post_details["post"]}
-        doc = posts_collection.find_one(user_template) 
-
-        if doc:
-            doc["template"] = post_details["post"]
-            posts_collection.update_one(user_template, {"$set": {"post":doc["post"]}}, upsert=False)
-            return jsonify({'msg': 'Post Updated successfully'}), 200
-        else: return jsonify({'msg': 'Post not exists on your profile'}), 404
-    else:
-        return jsonify({'msg': 'Access Token Expired'}), 404
-
-@app.route("/post/delete", methods=["POST"])
-@jwt_required()
-def delete_template():
-    current_user = get_jwt_identity()
-    user_from_db = users_collection.find_one({'username' : current_user})
-    
-    if user_from_db:
-        post_details = request.get_json() 
-        user_template = {'profile' : user_from_db["username"],  "post": post_details["post"]}
-        doc = posts_collection.find_one(user_template) 
-        if doc:
-            posts_collection.delete_one(user_template)
-            return jsonify({'msg': 'Post Deleted Sucessfully'}), 404
-        else: return jsonify({'msg': 'Post not exists on your profile'}), 404
-    else:
-        return jsonify({'msg': 'Access Token Expired'}), 404
-    
+    if current_user:
+        post = posts_collection.find_one({"id":int(post_id)})
+        if post["user"] == current_user:
+            posts_collection.delete_one(post)
+            return redirect("/posts")
+    return redirect("/login")
+            
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -177,21 +155,23 @@ def my_profile():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
-            # filename = secure_filename(file.filename) # removes ../
-
             file.save(os.path.join(app.config['PROFILE_PICTURES'], current_user+'.jpg'))
         response = redirect(request.url)  
     else:
-        full_filename = os.path.join(app.config['PROFILE_PICTURES'], current_user+'.jpg') #needs file type checking; maybe some searching in the with the user's name
+        full_filename = "/photos?photo="+current_user+".jpg"
         response = make_response(render_template('profile.html', user_image= full_filename))
 
 
     return response
 
-@app.route("/photos/<user>", methods=["GET"])
-def get_photo(user):
-    full_filename = os.path.join(app.config['PROFILE_PICTURES'], user+'.jpg')
-    response = make_response()
+@app.route("/photos", methods=["GET"])
+def get_photo():
+    path = request.args.get("photo")
+    return send_file(app.config["PROFILE_PICTURES"] +'/' +path)
+
+app.add_url_rule(
+    "/photos", endpoint="get_photo", build_only=True
+)
 
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])

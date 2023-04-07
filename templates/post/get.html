@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Post{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+
+  {% if owner %}
+  <a href="/post/delete/{{post['id']}}" class="btn btn-danger" role="button">Delete</a>
+
+  {% endif %}
+  {{post['title']}}
+  <br>
+  <br>
+  {{post['content']}}
+{% endblock %}
