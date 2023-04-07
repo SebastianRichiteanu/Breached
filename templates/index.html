@@ -1,12 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/index.css') }}">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.png') }}">
-    <title>Breached</title>
-</head>
-<body>
-   <h1>Welcome to Breached, {{username}}</h1>
-</body>
-</html>
+{% extends 'base.html' %}
+
+
+{% block header %}
+  <h1>{% block title %}
+        Welcome to Breached
+        {% if username != "" %}
+            ,{{username}}
+        {% endif %}
+    {% endblock %}</h1 >
+{% endblock %}
+

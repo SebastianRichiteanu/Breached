@@ -16,7 +16,7 @@ users_collection = db.users
 posts_collection = db.posts
 
 jwt = JWTManager(app)
-app.config['JWT_SECRET_KEY'] = secrets.token_hex(16)
+app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 
@@ -25,7 +25,7 @@ user_schema = {
     'username': str,
     'password': str
 }
-
+ 
 post_schema = {
     'title': str,
     'content': str,
@@ -64,7 +64,13 @@ def login():
     else:
         return render_template('auth/login.html')
 
-
+@app.route('/logout', methods=["GET"])
+@jwt_required()
+def logout():
+    response = make_response(render_template('index.html'))
+    response.set_cookie('access_token_cookie', '')
+    return response
+    
 
 @app.route("/post/create", methods=["GET", "POST"])
 @jwt_required()
@@ -82,11 +88,11 @@ def create_post():
             
             if not post:
                 posts_collection.insert_one(user_post)
-                return render_template('post/create.html', state = 1)
+                return render_template('post/create.html', logged_in = 1)
             else: 
-                return render_template('post/create.html', state = 2)
+                return render_template('post/create.html', logged_in = 2)
     else:
-        return render_template('post/create.html', state = 0)
+        return render_template('post/create.html')
 
 @app.route("/post/get", methods=["GET"])
 @jwt_required()
@@ -131,7 +137,6 @@ def delete_template():
         doc = posts_collection.find_one(user_template) 
         if doc:
             posts_collection.delete_one(user_template)
-            print("user_template ", user_template)
             return jsonify({'msg': 'Post Deleted Sucessfully'}), 404
         else: return jsonify({'msg': 'Post not exists on your profile'}), 404
     else:
@@ -139,8 +144,20 @@ def delete_template():
 
 @app.route('/', methods=['GET'])
 def index():
-    # current_user = get_jwt_identity()
-    # username = current_user["username"]
-    username = ""
-    return render_template('index.html', username=username)
+    current_user = ""
+    try: 
+        current_user = get_jwt_identity()
+    except:
+        return render_template('index.html')
+
+    return render_template('index.html') 
+
+@app.context_processor
+@jwt_required
+def inject_user():
+    try: 
+        current_user = get_jwt_identity()
+    except:
+        return dict(username="")
+    return dict(username=current_user)
 
