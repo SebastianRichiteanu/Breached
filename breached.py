@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response
+from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, flash
 from pymongo import MongoClient
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required, set_access_cookies, unset_jwt_cookies
@@ -99,7 +99,7 @@ def create_post():
 
             user_post = {'user' : user_from_db["username"],  "post": title, "content": content}
             post = posts_collection.find_one(user_post) 
-            
+
             if not post:
                 posts_collection.insert_one(user_post)
                 return render_template('post/create.html', logged_in = 1)
@@ -156,28 +156,46 @@ def delete_template():
     else:
         return jsonify({'msg': 'Access Token Expired'}), 404
     
-@app.route("/profile", methods=["GET"])
-@jwt_required()
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route("/profile", methods=["GET", "POST"])
+@jwt_required(optional=True)
 def my_profile():
     current_user = get_jwt_identity()
+    if current_user==None:
+        return redirect("/login")
+    if request.method== "POST":
 
-    if current_user!=None:
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            # filename = secure_filename(file.filename) # removes ../
+
+            file.save(os.path.join(app.config['PROFILE_PICTURES'], current_user+'.jpg'))
+        response = redirect(request.url)  
+    else:
         full_filename = os.path.join(app.config['PROFILE_PICTURES'], current_user+'.jpg') #needs file type checking; maybe some searching in the with the user's name
         response = make_response(render_template('profile.html', user_image= full_filename))
-    else:
-        response = redirect("/login")
+
 
     return response
+
+@app.route("/photos/<user>", methods=["GET"])
+def get_photo(user):
+    full_filename = os.path.join(app.config['PROFILE_PICTURES'], user+'.jpg')
+    response = make_response()
 
 @app.route('/', methods=['GET'])
 @app.route('/index', methods=['GET'])
 def index():
-    # current_user = ""
-    # try: 
-    #     current_user = get_jwt_identity()
-    # except:
-    #     return render_template('index.html')
-
     return render_template('index.html') 
 
 @app.context_processor
