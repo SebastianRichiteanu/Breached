@@ -81,6 +81,9 @@ def logout():
 def create_post():
     if request.method == 'POST':
         current_user = get_jwt_identity() 
+
+        #sebik bosule sterge user_from_db si foloseste current_user ca e fix acelasi lucru. pui current_user!=None ca sa verifici
+
         user_from_db = users_collection.find_one({'username' : current_user})
         
         if user_from_db:
