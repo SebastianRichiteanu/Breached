@@ -2,12 +2,19 @@ from flask import Flask, render_template, request, url_for, redirect, jsonify, m
 from pymongo import MongoClient
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required, set_access_cookies, unset_jwt_cookies
+from werkzeug.utils import secure_filename
 import datetime
 import hashlib
 import urllib
 import secrets
+import os
+
+PROFILE_PICTURES = os.path.join('static', 'profile_pictures')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
+
+app.config['PROFILE_PICTURES'] = PROFILE_PICTURES
 
 client = MongoClient('localhost', 27017)
 db = client.flask_db
@@ -148,8 +155,22 @@ def delete_template():
         else: return jsonify({'msg': 'Post not exists on your profile'}), 404
     else:
         return jsonify({'msg': 'Access Token Expired'}), 404
+    
+@app.route("/profile", methods=["GET"])
+@jwt_required()
+def my_profile():
+    current_user = get_jwt_identity()
+
+    if current_user!=None:
+        full_filename = os.path.join(app.config['PROFILE_PICTURES'], current_user+'.jpg') #needs file type checking; maybe some searching in the with the user's name
+        response = make_response(render_template('profile.html', user_image= full_filename))
+    else:
+        response = redirect("/login")
+
+    return response
 
 @app.route('/', methods=['GET'])
+@app.route('/index', methods=['GET'])
 def index():
     # current_user = ""
     # try: 

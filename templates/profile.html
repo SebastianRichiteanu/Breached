@@ -3,3 +3,9 @@
 {% block header %}
   <h1>{% block title %}My Profile{% endblock %}</h1>
 {% endblock %}
+
+{% block content %}
+
+<img src="{{ user_image }}" alt="User Image", height="400">
+
+{% endblock %}
