@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response
 from pymongo import MongoClient
 import hashlib
-from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required, set_access_cookies, unset_jwt_cookies
 import datetime
 import hashlib
 import urllib
@@ -19,6 +19,7 @@ jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+app.config["JWT_COOKIE_SECURE"] = True
 
 
 user_schema = {
@@ -56,8 +57,10 @@ def login():
         user_from_db = users_collection.find_one({"username":username})
         if user_from_db and password == user_from_db["password"]:
             access_token = create_access_token(identity=username)
-            response = make_response(render_template('auth/login.html', message='Login successful!'))
-            response.set_cookie('access_token_cookie', access_token)
+            # response = make_response(render_template('index.html', message='Login successful!'))
+            response = redirect('/')
+            set_access_cookies(response=response, encoded_access_token=access_token)
+            # response.set_cookie('access_token_cookie', access_token)
             return response
         else:
             return render_template('auth/login.html', message='Username or password incorrect!')
@@ -67,8 +70,9 @@ def login():
 @app.route('/logout', methods=["GET"])
 @jwt_required()
 def logout():
-    response = make_response(render_template('index.html'))
-    response.set_cookie('access_token_cookie', '')
+    # response = make_response(render_template('index.html'))
+    response = redirect('/')
+    unset_jwt_cookies(response)
     return response
     
 
@@ -144,20 +148,19 @@ def delete_template():
 
 @app.route('/', methods=['GET'])
 def index():
-    current_user = ""
-    try: 
-        current_user = get_jwt_identity()
-    except:
-        return render_template('index.html')
+    # current_user = ""
+    # try: 
+    #     current_user = get_jwt_identity()
+    # except:
+    #     return render_template('index.html')
 
     return render_template('index.html') 
 
 @app.context_processor
-@jwt_required
+@jwt_required(optional=True)
 def inject_user():
-    try: 
-        current_user = get_jwt_identity()
-    except:
-        return dict(username="")
+    current_user = get_jwt_identity()
+    if current_user==None:
+        current_user=""
     return dict(username=current_user)
 
