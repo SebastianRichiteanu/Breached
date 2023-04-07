@@ -7,3 +7,6 @@ ssti
 file upload vuln
 steghide 
 
+idei:
+imagine in folder in care e ascuns cu steghide parola de root la VM (obtinuta prin lfi?)
+secret pt jwt B2K1RMBTJTCFwcP7nJAn7uZsAQCmCS6MfWLWeqsnq3syXszh base 58, decriptat iti da parola pt steghide (sesiune jwt furata si steghide)
