@@ -18,19 +18,11 @@
   <tbody>
     {% for post in posts %}
       <tr>
-        <td><a class="nav-link" href="/post/{{post.id}}">{{ post.title }}</a></td>
+        <td><a class="nav-link" href="/post?id={{post.id}}">{{ post.title }}</a></td>
         <td>{{ post.user }}</td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
-
-{% for post in posts %}   
-    {{ post['title'] }}
-    <br>
-    <br>
-    {{ post['content'] }}
-{% endfor %}
-
 
 {% endblock %}

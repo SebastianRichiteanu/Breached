@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, flash, send_from_directory, send_file
+from flask import Flask, render_template, render_template_string, request, url_for, redirect, jsonify, make_response, flash, send_from_directory, send_file
 from pymongo import MongoClient
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required, set_access_cookies, unset_jwt_cookies
@@ -21,6 +21,11 @@ db = client.flask_db
 
 users_collection = db.users
 posts_collection = db.posts
+
+try:
+    posts_increment = posts_collection.find_one(sort=[("id", -1)])["id"]
+except:
+    posts_increment = 0
 
 jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
@@ -87,9 +92,10 @@ def posts():
     posts = posts_collection.find()
     return render_template('posts.html', posts=posts)
 
-@app.route("/post/<post_id>", methods=["GET"])
+@app.route("/post", methods=["GET"])
 @jwt_required(optional=True)
-def get_template(post_id):
+def get_template():
+    post_id = request.args.get("id")
     post = posts_collection.find_one({"id":int(post_id)})
     if post:
         current_user = get_jwt_identity() 
@@ -98,12 +104,13 @@ def get_template(post_id):
             owner = True
         return render_template('/post/get.html', post=post, owner=owner)
 
-    return jsonify({'msg': 'NU'}), 404
+    return redirect("/posts")
 
 
 @app.route("/post/create", methods=["GET", "POST"])
 @jwt_required()
 def create_post():
+    global posts_increment
     if request.method == 'POST':
         current_user = get_jwt_identity() 
 
@@ -113,26 +120,27 @@ def create_post():
                 return render_template('post/create.html', message='Post already exists!')
 
             content = request.form["content"]
-            post_id = posts_collection.count_documents({})+1
-            app.logger.debug(post_id)
-            user_post = {"id": post_id, "user" : current_user,  "title": title, "content": content}
+            posts_increment += 1
+            user_post = {"id": posts_increment, "user" : current_user,  "title": title, "content": content}
             posts_collection.insert_one(user_post)
             return render_template('post/create.html', message='Sucessfully created post!')
 
     return render_template('post/create.html')
 
 
-@app.route("/post/delete/<post_id>", methods=["GET"])
+@app.route("/post/delete", methods=["GET"])
 @jwt_required()
-def delete_template(post_id):
+def delete_template():
     current_user = get_jwt_identity()
-    
+    post_id = request.args.get("id")
     if current_user:
-        post = posts_collection.find_one({"id":int(post_id)})
-        if post["user"] == current_user:
+        try:
+            post = posts_collection.find_one({"id":int(post_id)})
             posts_collection.delete_one(post)
-            return redirect("/posts")
-    return redirect("/login")
+        except:
+            return render_template_string("Error while trying to delete " + post_id + "!")
+            
+    return render_template_string("Deleted " + post_id + "!")
             
 
 def allowed_file(filename):

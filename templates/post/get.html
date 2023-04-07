@@ -7,7 +7,7 @@
 {% block content %}
 
   {% if owner %}
-  <a href="/post/delete/{{post['id']}}" class="btn btn-danger" role="button">Delete</a>
+  <a href="/post/delete?id={{post.id}}" class="btn btn-danger" role="button">Delete</a>
 
   {% endif %}
   {{post['title']}}
