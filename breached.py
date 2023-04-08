@@ -22,7 +22,7 @@ db = client.flask_db
 
 users_collection = db.users
 posts_collection = db.posts
-comments_collection = db.comms
+comments_collection = db.comments
 
 try:
     posts_increment = posts_collection.find_one(sort=[("id", -1)])["id"]
@@ -30,9 +30,9 @@ except:
     posts_increment = 0
 
 try:
-    comm_increment = comments_collection.find_one(sort=[("id", -1)])["id"]
+    comments_increment = comments_collection.find_one(sort=[("id", -1)])["id"]
 except:
-    comm_increment = 0
+    comments_increment = 0
 
 jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
@@ -124,14 +124,14 @@ def get_template():
 @app.route("/postcomment", methods=["POST"])
 @jwt_required()
 def post_comment():
-    global comm_increment
+    global comments_increment
     if request.method == 'POST':
         current_user = get_jwt_identity()
         if current_user:
             content = request.form['content']
             post_id = request.form['post_id']
-            comm_increment += 1
-            comments_collection.insert_one({'id':comm_increment, 'user': current_user, 'content': content, 'post_id': int(post_id)})
+            comments_increment += 1
+            comments_collection.insert_one({'id':comments_increment, 'user': current_user, 'content': content, 'post_id': int(post_id)})
             response = redirect("/post?id="+str(post_id))
         else:
             response = redirect("/login")
@@ -147,8 +147,7 @@ def delete_comment():
     comment_id = request.args.get("id")
     if current_user:
         try:
-            comment = comments_collection.find_one({"id":int(comment_id)})
-            comments_collection.delete_one(comment)
+            comments_collection.delete_one({"id":int(comment_id)})
         except:
             return render_template_string("Error while trying to delete " + comment_id + "!")
             
@@ -183,12 +182,12 @@ def delete_template():
     post_id = request.args.get("id")
     if current_user:
         try:
-            comments = comments_collection.find({"post_id":int(post_id)})
             post = posts_collection.find_one({"id":int(post_id)})
-            comments_collection.delete_many(comments)
+            comments_collection.delete_many({"post_id":(int(post_id))})
             posts_collection.delete_one(post)
-        except:
+        except Exception as e:
             return render_template_string("Error while trying to delete " + post_id + "!")
+            # return render_template_string(str(e))
             
     return render_template_string("Deleted " + post_id + "!")
             
