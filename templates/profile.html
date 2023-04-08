@@ -6,8 +6,9 @@
 
 {% block content %}
 
-<iframe src="{{ user_image }}" title="User Image", height="400"></iframe>
+<iframe src="{{ user_image }}" title="User Image", height="220"></iframe>
 
+<h5>Change profile picture</h5>
 <form method=post enctype=multipart/form-data>
   <input type=file name=file>
   <input type=submit value=Upload>

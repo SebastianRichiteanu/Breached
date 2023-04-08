@@ -7,11 +7,36 @@
 {% block content %}
 
   {% if owner %}
-  <a href="/post/delete?id={{post.id}}" class="btn btn-danger" role="button">Delete</a>
-
+  <a href="/post/delete?id={{post.id}}" class="btn btn-danger" role="button">Delete post</a>
+  <br><br>
   {% endif %}
   {{post['title']}}
-  <br>
-  <br>
+  <br><br>
   {{post['content']}}
+  <br><br>
+  
+  <form action="/postcomment" method="post">
+    <textarea name="content" id="content" required></textarea>
+    <input type="hidden" name="post_id" value="{{post.id}}">
+    <input type="submit" value="Post comment">
+  </form>
+  <script>
+    const form = document.querySelector('form');
+    form.addEventListener('submit', async(event) => {
+    })
+  </script>
+
+  <table id="data" class="table table-striped">
+    <tbody>
+      {% for comment in comments %}
+        <tr>
+          <td>{{ comment.user}}</td>
+          <td>{{ comment.content }}</td>
+          {% if owner %}
+          <td><a href="/deletecomment?id={{comment.id}}" class="btn btn-danger" role="button">Delete comment</a></td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 {% endblock %}
