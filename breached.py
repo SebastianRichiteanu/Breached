@@ -64,9 +64,13 @@ comment_schema = {
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == 'POST':
-        username = request.form["username"]
-        password = request.form["password"]
-        # maybe encrypt password
+        if len(request.form):
+            username = request.form["username"]
+            password = request.form["password"]
+        else:
+            username = request.json.get("username")
+            password = request.json.get("password")
+
         user = users_collection.find_one({"username":username})
         if not user:
             users_collection.insert_one({'username': username, 'password': password})
@@ -80,10 +84,15 @@ def register():
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == 'POST':
-        username = request.form["username"]
-        password = request.form["password"]
-        user_from_db = users_collection.find_one({"username":username})
-        if user_from_db and password == user_from_db["password"]:
+        if len(request.form):
+            username = request.form["username"]
+            password = request.form["password"]
+        else:
+            username = request.json.get("username")
+            password = request.json.get("password")
+
+        user_from_db = users_collection.find_one({"username":username, "password":password})
+        if user_from_db:
             access_token = create_access_token(identity=username)
             response = redirect('/')
             set_access_cookies(response=response, encoded_access_token=access_token)
@@ -145,13 +154,14 @@ def post_comment():
 def delete_comment():
     current_user = get_jwt_identity()
     comment_id = request.args.get("id")
+    post_id = comments_collection.find_one({"id":int(comment_id)})["post_id"]
     if current_user:
         try:
             comments_collection.delete_one({"id":int(comment_id)})
         except:
-            return render_template_string("Error while trying to delete " + comment_id + "!")
+            return render_template_string("Error while trying to delete comment no. " + comment_id + "! <br> Redirecting in 5..."), {"Refresh": f"5; url=/post?id={post_id}"}
             
-    return render_template_string("Deleted " + comment_id + "!")
+    return render_template_string("Deleted comment no. " + comment_id + "! <br> Redirecting in 5..."), {"Refresh": f"5; url=/post?id={post_id}"}
 
 
 @app.route("/post/create", methods=["GET", "POST"])
@@ -188,7 +198,7 @@ def delete_template():
         except Exception as e:
             return render_template_string("Error while trying to delete " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
             
-    return render_template_string("Deleted " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
+    return render_template_string("Deleted post no. " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
             
 
 def allowed_file(filename):
