@@ -6,23 +6,44 @@
 
 {% block content %}
 
-<a class="nav-link" href="/post/create">Create post</a>
+<body>
+  <div class="container">
+      <div class="navigate">
+          <span><a href="">Posts</a> >> <a href="/posts">random</a></span>
+      </div>
 
-<table id="data" class="table table-striped">
-  <thead>
-    <tr>
-      <th>Title</th>
-      <th>Posted by</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for post in posts %}
-      <tr>
-        <td><a class="nav-link" href="/post?id={{post.id}}">{{ post.title }}</a></td>
-        <td>{{ post.user }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+      {% if user %}
+      <a class="btn btn-primary" href="/post/create">Create post</a>
+      {% endif %}
+      <br>
+      <br>
+      <div class="posts-table">
+          <div class="table-head">
+              <div class="status">Status</div>
+              <div class="subjects">Subjects</div>
+              <div class="replies">Replies/Views</div>
+              <div class="last-reply">Last Reply</div>
+          </div>
+          {% for post in posts %}
+          <div class="table-row">
+              <div class="status"><i class="fa fa-fire"></i></div>
+              <div class="subjects">
+                  <a href="/post?id={{post.id}}">{{ post.title }}</a>
+                  <br>
+                  <span>Started by <b>{{ post.user }}</b> .</span>
+              </div>
+              <div class="replies">
+                  69 replies <br> 1337 views
+              </div>
+
+              <div class="last-reply">
+                  Oct 12 2024
+              </div>
+          </div>
+          {% endfor %}
+          
+      </div>
+  </div>
+</body>
 
 {% endblock %}

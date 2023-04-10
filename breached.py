@@ -102,26 +102,26 @@ def logout():
     
 
 @app.route("/posts", methods=["GET"])
+@jwt_required(optional=True)
 def posts():
+    logged_in = True 
+    current_user = get_jwt_identity()
     posts = posts_collection.find()
-    return render_template('posts.html', posts=posts)
+    return render_template('posts.html', posts=posts, user=current_user)
 
 @app.route("/post", methods=["GET"])
 @jwt_required(optional=True)
-def get_template():
+def get_post():
     post_id = request.args.get("id")
     post = posts_collection.find_one({"id":int(post_id)})
     if post:
         current_user = get_jwt_identity() 
-        owner = False
-        if post["user"] == current_user:
-            owner = True
         comments = comments_collection.find({"post_id":int(post_id)})
-        return render_template('/post/get.html', post=post, owner=owner, comments=comments)
+        return render_template('/post/get.html', post=post, user=current_user, comments=comments)
 
     return redirect("/posts")
 
-@app.route("/postcomment", methods=["POST"])
+@app.route("/comment", methods=["POST"])
 @jwt_required()
 def post_comment():
     global comments_increment
@@ -140,7 +140,7 @@ def post_comment():
     
     return response
 
-@app.route("/deletecomment", methods=["GET"])
+@app.route("/comment/delete", methods=["GET"])
 @jwt_required()
 def delete_comment():
     current_user = get_jwt_identity()
@@ -186,10 +186,9 @@ def delete_template():
             comments_collection.delete_many({"post_id":(int(post_id))})
             posts_collection.delete_one(post)
         except Exception as e:
-            return render_template_string("Error while trying to delete " + post_id + "!")
-            # return render_template_string(str(e))
+            return render_template_string("Error while trying to delete " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
             
-    return render_template_string("Deleted " + post_id + "!")
+    return render_template_string("Deleted " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
             
 
 def allowed_file(filename):

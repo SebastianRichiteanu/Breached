@@ -6,37 +6,66 @@
 
 {% block content %}
 
-  {% if owner %}
-  <a href="/post/delete?id={{post.id}}" class="btn btn-danger" role="button">Delete post</a>
-  <br><br>
-  {% endif %}
-  {{post['title']}}
-  <br><br>
-  {{post['content']}}
-  <br><br>
-  
-  <form action="/postcomment" method="post">
-    <textarea name="content" id="content" required></textarea>
-    <input type="hidden" name="post_id" value="{{post.id}}">
-    <input type="submit" value="Post comment">
-  </form>
-  <script>
-    const form = document.querySelector('form');
-    form.addEventListener('submit', async(event) => {
-    })
-  </script>
+<div class="container">
+<div class="navigate">
+    <span><a href="">Posts</a> >> <a href="">random</a> >> <a href="">{{post.title}}</a></span>
+</div>
 
-  <table id="data" class="table table-striped">
-    <tbody>
-      {% for comment in comments %}
-        <tr>
-          <td>{{ comment.user}}</td>
-          <td>{{ comment.content }}</td>
-          {% if owner %}
-          <td><a href="/deletecomment?id={{comment.id}}" class="btn btn-danger" role="button">Delete comment</a></td>
-          {% endif %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% if post.user == user %}
+<a href="/post/delete?id={{post.id}}" class="btn btn-danger" role="button">Delete post</a>
+<br><br>
+{% endif %}
+
+<!--Topic Section-->
+<div class="topic-container">
+    <!--Original thread-->
+    <div class="head">
+        <div class="authors">Author</div>
+        <div class="content">Topic: {{post.title}}</div>
+    </div>
+
+    <div class="body">
+        <div class="authors">
+            <div class="username"><a href="">{{post.user}}</a></div>
+            <div>Role</div>
+            <img src="{{ url_for('static', filename='images/favicon.ico') }}" alt="">
+        </div>
+        <div class="content">
+            {{post.content}}
+        </div>
+    </div>
+</div>
+
+<!--Comments Section-->
+<div class="comments-container">
+    {% for comment in comments %}
+    <div class="body">
+        <div class="authors">
+            <div class="username"><a href="">{{comment.user}}</a></div>
+            <div>Role</div>
+            <img src="{{ url_for('static', filename='images/favicon.ico') }}" alt="">
+        </div>
+        <div class="content">
+            {{comment.content}}
+        </div>
+        {% if comment.user == user %}
+          <td><a href="/comment/delete?id={{comment.id}}" class="btn btn-danger" role="button" style="width: min-content; height: min-content;">Delete comment</a></td>
+        {% endif %}
+    </div>
+    {%endfor%}
+</div>
+
+<div class="comment-area" id="comment-area"></div>
+<form class="comment-form" id="comment-form" action="/comment" method="post" >
+  <textarea name="content" id="content" placeholder="comment here ... " required></textarea>
+  <input type="hidden" name="post_id" value="{{post.id}}">
+  <input style="float:right" class="button btn-info" type="submit" value="Post comment">
+</form>
+<script>
+  const form = document.querySelector('form');
+  form.addEventListener('submit', async(event) => {
+  })
+</script>
+</div>
+  
 {% endblock %}

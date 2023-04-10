@@ -1,17 +1,28 @@
 {% extends 'base.html' %}
 
-{% block header %}
-  <h1>{% block title %}My Profile{% endblock %}</h1>
-{% endblock %}
-
 {% block content %}
 
-<iframe src="{{ user_image }}" title="User Image", height="220"></iframe>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/create.css') }}">
 
-<h5>Change profile picture</h5>
-<form method=post enctype=multipart/form-data>
-  <input type=file name=file>
-  <input type=submit value=Upload>
-</form>
+<div class="container">
+  <h1>My Profile</h1>
+  <div class="profile">
+    <div class="picture">
+      <iframe src="{{ user_image }}" title="User Image", height="240"></iframe>
+    </div>
+    <br>
+    <br>
+    <div class="info">
+      <h5>Change profile picture</h5>
+      <form method=post enctype=multipart/form-data>
+        <input type=file name=file>
+        <input type=submit value=Upload>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
 
 {% endblock %}
