@@ -8,17 +8,20 @@ import hashlib
 import urllib
 import secrets
 import os
+import bcrypt
+import logging
+from logging.handlers import RotatingFileHandler
 
 PROFILE_PICTURES = os.path.join('static', 'profile_pictures')
-# ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 ALLOWED_EXTENSIONS = {'jpg'}
 
 app = Flask(__name__)
 
 app.config['PROFILE_PICTURES'] = PROFILE_PICTURES
 
-client = MongoClient('localhost', 27017)
+client = MongoClient(host='localhost', port=27017, username='pompompurin', password='oparolafoartelunga123')
 db = client.flask_db
+
 
 users_collection = db.users
 posts_collection = db.posts
@@ -35,7 +38,7 @@ except:
     comments_increment = 0
 
 jwt = JWTManager(app)
-app.config['JWT_SECRET_KEY'] = 'secret' #secrets.token_hex(16)
+app.config['JWT_SECRET_KEY'] = 'OCHEIECAREESTEFOARTELUNGA24'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config["JWT_COOKIE_SECURE"] = True
@@ -43,6 +46,7 @@ app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 
 user_schema = {
+    'admin': bool,
     'username': str,
     'password': str
 }
@@ -61,19 +65,27 @@ comment_schema = {
     'content': str,
 }
 
+# Configure logging
+log_file = 'breached.log'
+max_file_size = 5 * 1024 * 1024 
+backup_count = 5  
+log_format = logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s')
+log_handler = RotatingFileHandler(log_file, maxBytes=max_file_size, backupCount=backup_count)
+log_handler.setFormatter(log_format)
+log_handler.setLevel(logging.INFO) 
+app.logger.addHandler(log_handler)
+
+
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == 'POST':
-        if len(request.form):
-            username = request.form["username"]
-            password = request.form["password"]
-        else:
-            username = request.json.get("username")
-            password = request.json.get("password")
+        username = request.form["username"]
+        password = request.form["password"]
 
         user = users_collection.find_one({"username":username})
         if not user:
-            users_collection.insert_one({'username': username, 'password': password})
+            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            users_collection.insert_one({'username': username, 'password': hashed})
             return render_template('auth/register.html', message='Sucessfully registered! You can now log in.')
         else:
             return render_template('auth/register.html', message='User already exists!')
@@ -84,15 +96,11 @@ def register():
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == 'POST':
-        if len(request.form):
-            username = request.form["username"]
-            password = request.form["password"]
-        else:
-            username = request.json.get("username")
-            password = request.json.get("password")
+        username = request.form["username"]
+        password = request.form["password"]
 
-        user_from_db = users_collection.find_one({"username":username, "password":password})
-        if user_from_db:
+        user_from_db = users_collection.find_one({"username":username})
+        if user_from_db and bcrypt.checkpw(password.encode('utf-8'), user_from_db["password"]):
             access_token = create_access_token(identity=username)
             response = redirect('/')
             set_access_cookies(response=response, encoded_access_token=access_token)
@@ -113,7 +121,6 @@ def logout():
 @app.route("/posts", methods=["GET"])
 @jwt_required(optional=True)
 def posts():
-    logged_in = True 
     current_user = get_jwt_identity()
     posts = posts_collection.find()
     return render_template('posts.html', posts=posts, user=current_user)
@@ -154,15 +161,16 @@ def post_comment():
 def delete_comment():
     current_user = get_jwt_identity()
     comment_id = request.args.get("id")
-    post_id = comments_collection.find_one({"id":int(comment_id)})["post_id"]
-    if current_user:
-        try:
+    comm = comments_collection.find_one({"id":int(comment_id)})
+    
+    if current_user and comm:
+        post = comm["post_id"]
+        user = comm["user"]
+        if current_user == user:
             comments_collection.delete_one({"id":int(comment_id)})
-        except:
-            return render_template_string("Error while trying to delete comment no. " + comment_id + "! <br> Redirecting in 5..."), {"Refresh": f"5; url=/post?id={post_id}"}
-            
-    return render_template_string("Deleted comment no. " + comment_id + "! <br> Redirecting in 5..."), {"Refresh": f"5; url=/post?id={post_id}"}
-
+            return render_template_string("Deleted! <br> Redirecting in 5..."), {"Refresh": f"5; url=/post?id={post}"}
+        
+    return render_template_string("Error while trying to delete! <br> Redirecting in 5..."), {"Refresh": f"5; url=/posts"}
 
 @app.route("/post/create", methods=["GET", "POST"])
 @jwt_required()
@@ -187,19 +195,19 @@ def create_post():
 
 @app.route("/post/delete", methods=["GET"])
 @jwt_required()
-def delete_template():
+def delete_post():
     current_user = get_jwt_identity()
     post_id = request.args.get("id")
-    if current_user:
-        try:
-            post = posts_collection.find_one({"id":int(post_id)})
+
+    post = posts_collection.find_one({"id":int(post_id)})
+    if current_user and post:
+        user = post['user']
+        if user == current_user:
             comments_collection.delete_many({"post_id":(int(post_id))})
             posts_collection.delete_one(post)
-        except Exception as e:
-            return render_template_string("Error while trying to delete " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
-            
-    return render_template_string("Deleted post no. " + post_id + "! <br> Redirecting in 5..."), {"Refresh": "5; url=/posts"}
-            
+            return render_template_string("Deleted! <br> Redirecting in 5..."), {"Refresh": f"5; url=/posts"}
+        
+    return render_template_string("Error while trying to delete! <br> Redirecting in 5..."), {"Refresh": f"5; url=/posts"}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -212,7 +220,6 @@ def my_profile():
     if current_user==None:
         return redirect("/login")
     if request.method== "POST":
-
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
@@ -239,6 +246,27 @@ def get_photo():
 app.add_url_rule(
     "/photos", endpoint="get_photo", build_only=True
 )
+
+
+@app.route("/admin", methods=["GET"])
+@jwt_required()
+def get_log():
+    current_user = get_jwt_identity()
+    if current_user != None:
+        user = users_collection.find_one({"username":current_user})
+        if user["admin"] == True:
+            log_file = request.args.get("log")
+            if log_file == None:
+                log_file = "breached.log"
+            with open(log_file, 'r') as file:
+                file_contents = file.read()
+                return make_response(file_contents)
+
+
+
+@app.before_request
+def log_request():
+    app.logger.info(f'Request: {request.method} {request.url}')
 
 
 @app.route("/")
