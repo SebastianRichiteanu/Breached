@@ -1,0 +1,46 @@
+###COMENZI MONGOSHELL###
+
+use admin
+db.createUser({
+user:"pompompurin",
+pwd:"321agnuletraofalorapo",
+roles:[
+{role:"root", db:"admin"}
+{role:"userAdminAnyDatabase", db:'admin'}
+]
+})
+
+
+use flask_db
+db.createRole({
+role:"breached_role",
+privileges:[
+{resource: {db: "flask_db", collection: "admins" }, actions: ["find"] },
+{resource: {db: "flask_db", collection: "users" }, actions: ["find", "update", "insert", "remove"] },
+{resource: {db: "flask_db", collection: "posts" }, actions: ["find", "update", "insert", "remove"] },
+{resource: {db: "flask_db", collection: "comments" }, actions: ["find", "update", "insert", "remove"] }
+],
+roles: []
+})
+
+db.createUser({
+user:"breached_db_user",
+pwd:"parolamare1137SALT",
+roles:["breached_role"]
+})
+
+#######
+
+
+###mongo_client.py###
+
+username = res["username"] or username
+password = res["password"] or password
+
+--->
+
+username = res["username"] or username
+password = res["password"] or password
+password+="1337SALT"
+
+#######
