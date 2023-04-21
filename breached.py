@@ -19,10 +19,11 @@ app = Flask(__name__)
 
 app.config['PROFILE_PICTURES'] = PROFILE_PICTURES
 
-client = MongoClient(host='localhost', port=27017, username='pompompurin', password='oparolafoartelunga123')
+
+client = MongoClient(host='localhost', port=27017, username='breached_db_user', password='password11137SALT') # to be changed into password1 after changing mongo_client.py
 db = client.flask_db
 
-
+admin_collection = db.admins
 users_collection = db.users
 posts_collection = db.posts
 comments_collection = db.comments
@@ -45,8 +46,11 @@ app.config["JWT_COOKIE_SECURE"] = True
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 
+admin_schema = {
+    'username': str
+}
+
 user_schema = {
-    'admin': bool,
     'username': str,
     'password': str
 }
@@ -253,8 +257,8 @@ app.add_url_rule(
 def get_log():
     current_user = get_jwt_identity()
     if current_user != None:
-        user = users_collection.find_one({"username":current_user})
-        if user["admin"] == True:
+        user = admin_collection.find_one({"username":current_user})
+        if user != None:
             log_file = request.args.get("log")
             if log_file == None:
                 log_file = "breached.log"
